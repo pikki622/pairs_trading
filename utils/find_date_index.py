@@ -15,7 +15,7 @@ def findDateIndex(date_index: DatetimeIndex, search_date: datetime) -> int:
     """
     i = 0
     search_date = convert_date(search_date)
-    date_t = datetime.today()
+    date_t = datetime.now()
     for i in range(0, len(date_index)):
         if type(date_index) == pd.Series:
             date_val = date_index.iloc[i]
@@ -24,8 +24,4 @@ def findDateIndex(date_index: DatetimeIndex, search_date: datetime) -> int:
         date_t = convert_date(date_val)
         if date_t >= search_date:
             break
-    if date_t > search_date:
-        index = i - 1
-    else:
-        index = i
-    return index
+    return i - 1 if date_t > search_date else i

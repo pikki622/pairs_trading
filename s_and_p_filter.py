@@ -20,9 +20,7 @@ def get_sector_name(file_name: str) -> str:
     :param file_name: a file name with a format like sp-sectors---information-technology-08-03-2022.csv
     :return: the sector. In this example 'information-technology'
     """
-    s: str = ''
-    if file_name is not None and len(file_name) > 0:
-        s: str = file_name[13:-15]
+    s: str = file_name[13:-15] if file_name is not None and file_name != "" else ''
     return s
 
 
@@ -44,9 +42,10 @@ def process_file(path: str, file_name: str) -> pd.DataFrame:
     # "Downloaded from Barchart.com as of 08-02-2022 10:54am CDT"  Remove this line
     # if it exists
     last_line = sector_raw.iloc[-1, :][0]
-    if type(last_line) == str:
-        if sector_raw.iloc[-1, :][0].startswith('Downloaded'):
-            sector_raw = sector_raw.head(sector_raw.shape[0] - 1)
+    if type(last_line) == str and sector_raw.iloc[-1, :][0].startswith(
+        'Downloaded'
+    ):
+        sector_raw = sector_raw.head(sector_raw.shape[0] - 1)
     sector_df = sector_raw[['Symbol', 'Name']].copy()
     sector_df['Sector'] = sec_name
     return sector_df
@@ -68,7 +67,7 @@ def filter_stocks(s_and_p_df: pd.DataFrame) -> None:
     """
     class_designation = ' Cl '
     names = s_and_p_df['Name']
-    company_name_dict = dict()
+    company_name_dict = {}
     for ix, name in enumerate(names):
         str_ix = name.find(class_designation)
         if str_ix > 0:
@@ -76,9 +75,9 @@ def filter_stocks(s_and_p_df: pd.DataFrame) -> None:
             class_type = name[str_ix+len(class_designation):].strip()
             t = (class_type, ix)
             if company_name not in company_name_dict:
-                company_name_dict[company_name] = list()
+                company_name_dict[company_name] = []
             company_name_dict[company_name].append(t)
-    delete_list = list()
+    delete_list = []
     for company_name, class_tuple_l in company_name_dict.items():
         if len(class_tuple_l) > 1:
             max_tuple = class_tuple_l[0]
@@ -99,7 +98,7 @@ def process_files(path: str) -> pd.DataFrame:
     s_and_p_df = pd.DataFrame()
     if os.access(path, os.R_OK):
         for file_name in os.listdir(path):
-            prefix: str = file_name[0:13]
+            prefix: str = file_name[:13]
             if prefix == 'sp-sectors---':
                 sector_df = process_file(path, file_name)
                 s_and_p_df = pd.concat([s_and_p_df, sector_df], axis=0)

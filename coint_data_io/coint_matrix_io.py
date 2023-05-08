@@ -61,7 +61,7 @@ class CointMatrixIO:
         :param coint_type:
         :return:
         """
-        row_list = list()
+        row_list = []
         num_rows = coint_analysis.shape[0]
         num_columns = coint_analysis.shape[1]
         for row_ix in range(num_rows):
@@ -90,12 +90,13 @@ class CointMatrixIO:
         self.write_cointegration_matrix(coint_analysis)
 
     def has_files(self) -> bool:
-        files_exist = False
-        if os.access(self.cointegration_data_path, os.R_OK):
-            files_exist = os.access(self.correlation_file_path, os.R_OK) and \
-                          os.access(self.johansen_file_path, os.R_OK) and \
-                          os.access(self.granger_file_path, os.R_OK)
-        return files_exist
+        return (
+            os.access(self.correlation_file_path, os.R_OK)
+            and os.access(self.johansen_file_path, os.R_OK)
+            and os.access(self.granger_file_path, os.R_OK)
+            if os.access(self.cointegration_data_path, os.R_OK)
+            else False
+        )
 
     def build_coint_info(self, coint_row: pd.DataFrame) -> CointInfo:
         # columns: row_ix, col_ix, confidence, pair_str, weight, has_intercept, intercept
@@ -104,12 +105,13 @@ class CointMatrixIO:
         weight = coint_row['weight']
         has_intercept = coint_row['has_intercept']
         intercept = coint_row['intercept']
-        info = CointInfo(pair_str=pair_str,
-                         confidence=confidence,
-                         weight=weight,
-                         has_intercept=has_intercept,
-                         intercept=intercept)
-        return info
+        return CointInfo(
+            pair_str=pair_str,
+            confidence=confidence,
+            weight=weight,
+            has_intercept=has_intercept,
+            intercept=intercept,
+        )
 
     def read_files(self) -> pd.DataFrame:
         """
@@ -146,7 +148,6 @@ class CointMatrixIO:
 def main() -> None:
     coint_matrix_io = CointMatrixIO(test=True)
     coint_info_df = coint_matrix_io.read_files()
-    pass
 
 if __name__ == '__main__':
     main()

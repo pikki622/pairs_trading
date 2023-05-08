@@ -267,8 +267,8 @@ def calc_pair_counts(sector_info: dict) -> pd.DataFrame:
     """
     column_label = ['num stocks', 'num pairs']
     sectors = list(sector_info.keys())
-    counts_l: list = list()
-    n_l: list = list()
+    counts_l: list = []
+    n_l: list = []
     for sector in sectors:
         n = len(sector_info[sector])
         n_l.append(n)
@@ -291,8 +291,7 @@ def calc_pair_counts(sector_info: dict) -> pd.DataFrame:
 
 # stock_info_df: a DataFrame with columns Symbol, Name, Sector
 stock_info_df = read_s_and_p_stock_info(s_and_p_file)
-stock_l: list = list(set(stock_info_df['Symbol']))
-stock_l.sort()
+stock_l: list = sorted(set(stock_info_df['Symbol']))
 market_data = MarketData(start_date=start_date)
 
 # Get close prices for the S&P 500 list
@@ -466,11 +465,11 @@ class CointData:
 
 
     def __str__(self):
-        if self.has_intercept():
-            s = f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, intercept: {self.get_intercept()} ({self.asset_a}, {self.asset_b})'
-        else:
-            s = f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, ({self.asset_a}, {self.asset_b})'
-        return s
+        return (
+            f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, intercept: {self.get_intercept()} ({self.asset_a}, {self.asset_b})'
+            if self.has_intercept()
+            else f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, ({self.asset_a}, {self.asset_b})'
+        )
 
     def set_intercept(self, intercept: float) -> None:
         self.intercept = intercept
@@ -485,14 +484,12 @@ class CointData:
 class PairStatistics:
     def __init__(self):
         self.decimals = 2
-        pass
 
     def correlation(self, data_a_df: pd.DataFrame, data_b_df: pd.DataFrame) -> float:
         data_a = np.array(data_a_df).flatten()
         data_b = np.array(data_b_df).flatten()
         c = np.corrcoef(data_a, data_b)
-        cor_v = round(c[0, 1], 2)
-        return cor_v
+        return round(c[0, 1], 2)
 
     def find_interval(self, coint_stat: float, critical_vals: dict) -> Tuple[bool, int]:
         """
@@ -508,7 +505,7 @@ class PairStatistics:
         abs_coint_stat = abs(coint_stat)
         for key, value in critical_vals.items():
             abs_value = abs(value)
-            if abs_coint_stat > abs_value and abs_value > interval:
+            if abs_coint_stat > abs_value > interval:
                 interval = abs_value
                 interval_key = key
                 cointegrated = True
@@ -528,10 +525,8 @@ class PairStatistics:
         slope_ba = result_ba.params[data_a.columns[0]]
         result = result_ab
         slope = slope_ab
-        if slope_ab < slope_ba:
-            t = sym_a
-            sym_a = sym_b
-            sym_b = t
+        if slope < slope_ba:
+            sym_a, sym_b = sym_b, sym_a
             result = result_ba
             slope = slope_ba
         intercept = round(result.params['const'], self.decimals)
@@ -556,9 +551,13 @@ class PairStatistics:
         cointegrated, interval = self.find_interval(coint_stat=trace_stat, critical_vals=critical_vals_dict)
         sym_a = data_a.columns[0]
         sym_b = data_b.columns[0]
-        coint_data = CointData(cointegrated=cointegrated, confidence=interval, weight=hedge_val, asset_a=sym_a,
-                               asset_b=sym_b)
-        return coint_data
+        return CointData(
+            cointegrated=cointegrated,
+            confidence=interval,
+            weight=hedge_val,
+            asset_a=sym_a,
+            asset_b=sym_b,
+        )
 
     def compute_halflife(self, z_df: pd.DataFrame) -> int:
         """
@@ -759,8 +758,7 @@ print(tabulate(cor_df, headers=[*cor_df.columns], tablefmt='fancy_grid'))
 def normalize_df(data_df: pd.DataFrame) -> pd.DataFrame:
     min_s = data_df.min()
     max_s = data_df.max()
-    norm_df = (data_df - min_s) / (max_s - min_s)
-    return norm_df
+    return (data_df - min_s) / (max_s - min_s)
 
 
 d2007_aapl_norm = normalize_df(d2007_aapl)
@@ -877,8 +875,8 @@ class SerialCorrelation:
         stock_b_sym = pair[1]
         stock_a_df = self.stock_close_df[stock_a_sym]
         stock_b_df = self.stock_close_df[stock_b_sym]
-        corr_list = list()
-        date_list = list()
+        corr_list = []
+        date_list = []
         for ix in range(0, self.stock_close_df.shape[0], self.window):
             stock_a_win = log(stock_a_df.iloc[ix:ix + self.window])
             stock_b_win = log(stock_b_df.iloc[ix:ix + self.window])
@@ -888,14 +886,13 @@ class SerialCorrelation:
             date_list.append(self.index[ix])
         corr_df = pd.DataFrame(corr_list)
         corr_df.index = date_list
-        serial_corr_result = self.SerialCorrResult(pair, corr_df)
-        return serial_corr_result
+        return self.SerialCorrResult(pair, corr_df)
 
     def build_corr_frame(self, corr_list: List[SerialCorrResult]) -> pd.DataFrame:
         num_cols = len(corr_list)
         num_rows = corr_list[0].corr_df.shape[0]
         corr_m = np.zeros([num_rows, num_cols])
-        col_names = list()
+        col_names = []
         for col_ix in range(num_cols):
             pair = corr_list[col_ix].pair
             col = f'{pair[0]}:{pair[1]}'
@@ -916,8 +913,7 @@ class SerialCorrelation:
         #     serial_corr_list.append(serial_corr)
         with Pool() as mp_pool:
             serial_corr_list = mp_pool.map(self.calc_pair_serial_correlation, self.pairs_list)
-        corr_df = self.build_corr_frame(serial_corr_list)
-        return corr_df
+        return self.build_corr_frame(serial_corr_list)
 
 
 pairs_list = get_pairs(sectors)
@@ -963,7 +959,7 @@ corr_df = serial_correlation.serial_correlation()
 
 
 def calc_corr_dist(corr_df: pd.DataFrame, cut_off: float) -> pd.DataFrame:
-    count_list = list()
+    count_list = []
     for row_num, row in corr_df.iterrows():
         count = 0
         for val in row:
@@ -1061,9 +1057,7 @@ class CalcPairsCointegration:
         asset_a_str = asset_a.columns[0]
         asset_b_str = asset_b.columns[0]
         if asset_a_str != granger_coint.asset_a:
-            t = asset_a_str
-            asset_a_str = asset_b_str
-            asset_b_str = t
+            asset_a_str, asset_b_str = asset_b_str, asset_a_str
         granger_pair_str = f'{asset_a_str}:{asset_b_str}'
         granger_coint_info = CointInfo(pair_str=granger_pair_str,
                                        confidence=granger_coint.confidence,
@@ -1076,8 +1070,9 @@ class CalcPairsCointegration:
                                         weight=johansen_coint.weight,
                                         has_intercept=False,
                                         intercept=np.NAN)
-        coint_result = CointAnalysisResult(granger_coint=granger_coint_info, johansen_coint=johansen_coint_info)
-        return coint_result
+        return CointAnalysisResult(
+            granger_coint=granger_coint_info, johansen_coint=johansen_coint_info
+        )
 
     def calc_pairs_coint_dataframe(self, corr_df: pd.DataFrame, window: int) -> pd.DataFrame:
         """
@@ -1123,14 +1118,14 @@ class Statistics:
         # Lists for correlation/cointegration distribution
         #
         # Correlation with Granger cointegration
-        self.corr_granger: List = list()
+        self.corr_granger: List = []
         # Correlation with Johansen cointegration
-        self.corr_johansen: List = list()
+        self.corr_johansen: List = []
         # A list of correlation values where the value is associated with Granger OR Johansen cointegration
         # The length of this list is the total cointegration number
-        self.corr_granger_or_johansen: List = list()
+        self.corr_granger_or_johansen: List = []
         # A list of correlation values where the value is associated with Granger AND Johansen cointegration
-        self.corr_granger_and_johansen: List = list()
+        self.corr_granger_and_johansen: List = []
         #
         # Correlation/Cointegration counts
         #
@@ -1293,13 +1288,9 @@ class CalcStatistics:
         elem_n_1_coint: CointAnalysisResult = elem_n_1_tuple[1]
         elem_n_granger = elem_n_coint.granger_coint
         is_n_granger_coint = elem_n_granger.confidence > 0
-        elem_n_1_granger = elem_n_1_coint.granger_coint
-        is_n_1_granger_coint = elem_n_1_granger.confidence > 0
         #
         elem_n_johansen = elem_n_coint.johansen_coint
         is_n_johansen_coint = elem_n_johansen.confidence > 0
-        elem_n_1_johansen = elem_n_1_coint.johansen_coint
-        is_n_1_johansen_coint = elem_n_1_johansen.confidence > 0
         self.add_coint_stats(correlation_n,
                              is_n_granger_coint,
                              is_n_johansen_coint,
@@ -1309,6 +1300,10 @@ class CalcStatistics:
             correlation_n_1 = elem_n_1_tuple[0]
             if correlation_n_1 >= self.cutoff_2:
                 stats.serial_correlation += 1
+            elem_n_1_granger = elem_n_1_coint.granger_coint
+            is_n_1_granger_coint = elem_n_1_granger.confidence > 0
+            elem_n_1_johansen = elem_n_1_coint.johansen_coint
+            is_n_1_johansen_coint = elem_n_1_johansen.confidence > 0
             self.correlation_and_cointegration(is_n_granger_coint,
                                                is_n_johansen_coint,
                                                is_n_1_granger_coint,
@@ -1320,11 +1315,8 @@ class CalcStatistics:
 
 
     def build_pairs_dict(self, coint_info_df: pd.DataFrame) -> Dict:
-        pairs_dict = dict()
         index = coint_info_df.index
-        for time_stamp in index:
-            pairs_dict[time_stamp]: int = 0
-        return pairs_dict
+        return {time_stamp: 0 for time_stamp in index}
 
 
     def traverse(self, coint_info_df: pd.DataFrame) -> Statistics:
@@ -1662,18 +1654,16 @@ class HalflifeCalculation:
         model = sm.OLS(spread_ret, spread_lag2)
         res = model.fit()
         halflife_f = -log(2) / res.params[1]
-        halflife_i = int(round(halflife_f))
-        return halflife_i
+        return int(round(halflife_f))
 
     def calc_spread(self, coint_info: CointInfo, window_start: int) -> np.array:
         pair_l = coint_info.pair_str.split(':')
         if pair_l[0] in self.close_prices_df.columns and pair_l[1] in self.close_prices_df.columns:
             asset_a_a = self.close_prices_df[pair_l[0]].iloc[window_start:window_start + self.window].values
             asset_b_a = self.close_prices_df[pair_l[1]].iloc[window_start:window_start + self.window].values
-            spread_a = asset_a_a - coint_info.intercept - (coint_info.weight * asset_b_a)
+            return asset_a_a - coint_info.intercept - (coint_info.weight * asset_b_a)
         else:
-            spread_a = np.zeros(0)
-        return spread_a
+            return np.zeros(0)
 
     def half_life_distribution(self) -> np.array:
         """
@@ -1686,7 +1676,7 @@ class HalflifeCalculation:
         """
         rows = coint_info_df.shape[0]
         cols = coint_info_df.shape[1]
-        halflife_l = list()
+        halflife_l = []
         pairs = coint_info_df.columns
         window_start = 0
         for row_ix in range(rows):
@@ -1708,8 +1698,7 @@ class HalflifeCalculation:
         # All halflife values will be grater than zero. Filter out halflife values that are over
         # 8 standard deviations out.
         halflife_filter = halflife_a <= (8 * halflife_std)
-        halflife_filtered_a = halflife_a[halflife_filter]
-        return halflife_filtered_a
+        return halflife_a[halflife_filter]
 
 
 half_life_calc = HalflifeCalculation(coint_info_df=coint_info_df,
@@ -1734,7 +1723,6 @@ halflife_df.columns = ['Spread Halflife']
 # +
 
 halflife_df.plot(kind='hist', xlabel='Spread Half-life', figsize=(10, 6))
-pass
 # -
 
 # <p>

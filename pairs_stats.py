@@ -17,8 +17,7 @@ from statsmodels.tsa.stattools import adfuller
 def normalize_df(data_df: pd.DataFrame) -> pd.DataFrame:
     min_s = data_df.min()
     max_s = data_df.max()
-    norm_df = (data_df - min_s) / (max_s - min_s)
-    return norm_df
+    return (data_df - min_s) / (max_s - min_s)
 
 
 class CointData:
@@ -44,11 +43,11 @@ class CointData:
 
 
     def __str__(self):
-        if self.has_intercept():
-            s = f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, intercept: {self.get_intercept()} ({self.asset_a}, {self.asset_b})'
-        else:
-            s = f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, ({self.asset_a}, {self.asset_b})'
-        return s
+        return (
+            f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, intercept: {self.get_intercept()} ({self.asset_a}, {self.asset_b})'
+            if self.has_intercept()
+            else f'cointegrated: {self.cointegrated}, confidence: {self.confidence}, weight: {self.weight}, ({self.asset_a}, {self.asset_b})'
+        )
 
     def set_intercept(self, intercept: float) -> None:
         self.intercept = intercept
@@ -63,12 +62,10 @@ class CointData:
 class PairStatistics:
     def __init__(self):
         self.decimals = 2
-        pass
 
     def correlation(self, data_a: pd.DataFrame, data_b: pd.DataFrame) -> float:
         c = np.corrcoef(data_a, data_b)
-        cor_v = round(c[0, 1], 2)
-        return cor_v
+        return round(c[0, 1], 2)
 
     def find_interval(self, coint_stat: float, critical_vals: dict) -> Tuple[bool, int]:
         """
@@ -84,7 +81,7 @@ class PairStatistics:
         abs_coint_stat = abs(coint_stat)
         for key, value in critical_vals.items():
             abs_value = abs(value)
-            if abs_coint_stat > abs_value and abs_value > interval:
+            if abs_coint_stat > abs_value > interval:
                 interval = abs_value
                 interval_key = key
                 cointegrated = True
@@ -104,10 +101,8 @@ class PairStatistics:
         slope_ba = result_ba.params[data_a.columns[0]]
         result = result_ab
         slope = slope_ab
-        if slope_ab < slope_ba:
-            t = sym_a
-            sym_a = sym_b
-            sym_b = t
+        if slope < slope_ba:
+            sym_a, sym_b = sym_b, sym_a
             result = result_ba
             slope = slope_ba
         intercept = round(result.params['const'], self.decimals)
@@ -132,9 +127,13 @@ class PairStatistics:
         cointegrated, interval = self.find_interval(coint_stat=trace_stat, critical_vals=critical_vals_dict)
         sym_a = data_a.columns[0]
         sym_b = data_b.columns[0]
-        coint_data = CointData(cointegrated=cointegrated, confidence=interval, weight=hedge_val, asset_a=sym_a,
-                               asset_b=sym_b)
-        return coint_data
+        return CointData(
+            cointegrated=cointegrated,
+            confidence=interval,
+            weight=hedge_val,
+            asset_a=sym_a,
+            asset_b=sym_b,
+        )
 
     def compute_halflife(self, z_df: pd.DataFrame) -> int:
         """
@@ -156,11 +155,13 @@ class PairStatistics:
         """
         compute the stationary time series x = A - w * B  or x = A - i - w * B if there is an intercept i
         """
-        if coint_data.has_intercept():
-            stationary_a = data_a.values - coint_data.get_intercept() - coint_data.weight * data_b.values
-        else:
-            stationary_a = data_a.values - coint_data.weight * data_b.values
-        return stationary_a
+        return (
+            data_a.values
+            - coint_data.get_intercept()
+            - coint_data.weight * data_b.values
+            if coint_data.has_intercept()
+            else data_a.values - coint_data.weight * data_b.values
+        )
 
 
 
@@ -177,7 +178,7 @@ market_data = MarketData(start_date=start_date, path=s_and_p_data)
 close_prices_df = market_data.get_close_data(['AAPL', 'MPWR', 'YUM'])
 close_index = close_prices_df.index
 
-half_year = int(trading_days/2)
+half_year = trading_days // 2
 
 d2007_ix = 0
 
@@ -220,7 +221,9 @@ stationary_df = pd.DataFrame(stationary_a.flatten())
 stationary_df.index = d2007_close.index
 
 stationary_df.columns = ['Stationary Time Series']
-stationary_df.plot(grid=True, title=f'stationary time series AAPL/MPWR', figsize=(10, 6))
+stationary_df.plot(
+    grid=True, title='stationary time series AAPL/MPWR', figsize=(10, 6)
+)
 stat_mean = stationary_df.mean()[0]
 stat_sd = stationary_df.std()[0]
 plt.axhline(y=stat_mean, color='black', linewidth=2)
@@ -230,6 +233,3 @@ plt.show()
 
 half_life = pair_stat.compute_halflife(stationary_df)
 print(f'half life: {half_life}')
-
-
-pass
