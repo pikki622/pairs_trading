@@ -18,14 +18,14 @@ def get_pairs(sector_info: dict) -> List[Tuple]:
                ('AAPL', 'ADP', 'information-technology'),
                ('AAPL', 'ADSK', 'information-technology')]
     """
-    pairs_list = list()
+    pairs_list = []
     sectors = list(sector_info.keys())
     for sector in sectors:
         stocks = sector_info[sector]
         num_stocks = len(stocks)
         for i in range(num_stocks):
             stock_a = stocks[i]
-            for j in range(i + 1, num_stocks):
-                stock_b = stocks[j]
-                pairs_list.append((stock_a, stock_b, sector))
+            pairs_list.extend(
+                (stock_a, stocks[j], sector) for j in range(i + 1, num_stocks)
+            )
     return pairs_list

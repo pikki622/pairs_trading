@@ -16,22 +16,17 @@ class MarketData:
     def __init__(self, start_date: datetime):
         self.start_date = convert_date(start_date)
         # self.end_date: datetime = convert_date(datetime.today() - timedelta(days=1))
-        self.end_date: datetime = convert_date(datetime.today())
+        self.end_date: datetime = convert_date(datetime.now())
         self.path = 's_and_p_data'
 
     def get_market_data(self,
                         symbol: str,
                         start_date: datetime,
                         end_date: datetime) -> pd.DataFrame:
-        data_col = 'Close'
         if type(symbol) == str:
-            t = list()
-            t.append(symbol)
+            t = [symbol]
         panel_data = yf.download(tickers=symbol, start=start_date, end=end_date, progress=False)
-        if panel_data.shape[0] > 0:
-            close_data: pd.DataFrame = panel_data[data_col]
-        else:
-            close_data = pd.DataFrame()
+        close_data = panel_data['Close'] if panel_data.shape[0] > 0 else pd.DataFrame()
         if close_data.shape[0] > 0:
             close_data = close_data.round(2)
             close_data_df = pd.DataFrame(close_data)
@@ -47,8 +42,7 @@ class MarketData:
 
     def df_last_date(self, data_df: pd.DataFrame) -> datetime:
         last_row = data_df.tail(1)
-        last_date = convert_date(last_row.index[0])
-        return last_date
+        return convert_date(last_row.index[0])
 
     def findDateIndexFromEnd(self, data_df: pd.DataFrame, search_date: datetime) -> int:
         found_index = -1
@@ -102,7 +96,7 @@ class MarketData:
         # fetch the close data in parallel
         n_cores = cpu_count()
         close_df = pd.DataFrame()
-        assert len(stock_list) > 0
+        assert stock_list
         with Pool(processes=(n_cores*2)) as mp_pool:
             close_list = mp_pool.map(self.read_data, stock_list)
         # close_list = list()
@@ -144,13 +138,13 @@ def extract_sectors(stocks_df: pd.DataFrame) -> dict:
     :return: a dictionary where the key is the sector and the value is a list of stock symbols in that sector.
     """
     sector: str = ''
-    sector_l: list = list()
-    stock_sectors = dict()
+    sector_l: list = []
+    stock_sectors = {}
     for t, stock_info in stocks_df.iterrows():
         if sector != stock_info['Sector']:
             if len(sector_l) > 0:
                 stock_sectors[sector] = sector_l
-                sector_l = list()
+                sector_l = []
             sector = stock_info['Sector']
         sector_l.append(stock_info['Symbol'])
     stock_sectors[sector] = sector_l

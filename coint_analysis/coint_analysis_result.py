@@ -14,8 +14,7 @@ class CointInfo:
     def __str__(self):
         s_true = f'pair: {self.pair_str} confidence: {self.confidence} weight: {self.weight} intercept: {self.intercept}'
         s_false = f'pair: {self.pair_str} confidence: {self.confidence} weight: {self.weight}'
-        s = s_true if self.has_intercept else s_false
-        return s
+        return s_true if self.has_intercept else s_false
 
 
 class CointAnalysisResult:
